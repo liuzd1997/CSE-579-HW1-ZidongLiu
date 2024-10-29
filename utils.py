@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch import distributions as pyd
 import torch.optim as optim
 from torch.distributions import Categorical
-
+import json
 import DiffusionPolicy
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -98,10 +98,25 @@ class PolicyAutoRegressiveModel(nn.Module):
             # Sample from this distribution and get that sample's log probability. Add the log probability
             # to the running log_probs and undiscretize the sample add append it to vals.
             # Important - use previous *sampled* actions
-            continue # TODO: Remove this when running
+
+            
+            if j > 0:
+                input_j = torch.cat([state, torch.stack(vals, dim=1)], dim=-1)
+            else:
+                input_j = state
+    
+            logits = self.trunks[j](input_j)
+            dist = torch.distributions.Categorical(logits=logits)
+            sample = dist.sample()
+            log_probs += dist.log_prob(sample)
+            vals.append(self.undiscretize(sample, j))
+
+            #continue # TODO: Remove this when running
             #========== TODO: end ==========
         vals = torch.cat(vals, dim=-1)
+
         return vals, log_probs
+    
     
     def log_prob(self, state, action):
         log_prob = 0.
@@ -113,10 +128,22 @@ class PolicyAutoRegressiveModel(nn.Module):
             # the respective MLP (i.e. self.trunks[j]) to get a logit. Use the logit to create a categorical distribution.
             # Get the log prob of the respective discretized action (i.e. ac_discretized[:, j]) and add it to the running log_prob.
             # Important - use previous actions from the action variable, *not* sampled actions
-            continue # TODO: Remove this when running
+
+
+            if j > 0:
+                input_j = torch.cat([state, action[:, :j]], dim=-1)
+            else:
+                input_j = state
+            
+            logits = self.trunks[j](input_j)
+            dist = torch.distributions.Categorical(logits=logits)
+            
+            log_prob += dist.log_prob(ac_discretized[:, j].long())
+            #continue # TODO: Remove this when running
             #========== TODO: end ==========
 
         return log_prob
+    
     
 def rollout(
         env,
