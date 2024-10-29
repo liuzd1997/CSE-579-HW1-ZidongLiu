@@ -39,12 +39,12 @@ def simulate_policy_dagger(env, policy, expert_paths, expert_policy=None, num_ep
                 batch_states = torch.cat([torch.tensor(trajs[idx]['observations'], dtype=torch.float, requires_grad=True) for idx in batch_idxs]).to(device)
                 batch_actions = torch.cat([torch.tensor(trajs[idx]['actions'], dtype=torch.float).to(device) for idx in batch_idxs])
                 
-                # Forward pass through the policy
+                
                 predictions = policy(batch_states)
                 if isinstance(predictions, tuple):  # Handle tuple output if present
                     predictions = predictions[0]
                 
-                # Calculate behavior cloning loss (MSE)
+                # Calculate behavior cloning loss
                 #loss = torch.nn.functional.mse_loss(predictions, batch_actions)
                 loss = torch.nn.functional.cross_entropy(predictions, batch_actions)
 
@@ -65,7 +65,7 @@ def simulate_policy_dagger(env, policy, expert_paths, expert_policy=None, num_ep
             #========== TODO: start ==========
             # Rollout the policy on the environment to collect more data, relabel them, add them into trajs_recent
           
-            traj = rollout(env, policy, agent_name="policy", episode_length=episode_length)
+            traj = rollout(env, policy, agent_name="dagger", episode_length=episode_length)
             # Use expert policy to relabel actions in the trajectory
             traj = relabel_action(traj, expert_policy)
             trajs_recent.append(traj)
